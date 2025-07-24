@@ -1,1 +1,1 @@
-export const URL="https://cryptease.onrender.com/api";
+export const URL="http://localhost:8080/api";

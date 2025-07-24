@@ -10,18 +10,7 @@ const Loan = () => {
   const [confirm, setConfirm] = useState(false);
   const [loan, setLoan] = useState();
 
-  const loadRazorpayScript = async () => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    script.onload = () => { };
-    document.body.appendChild(script);
-  };
-
-  React.useEffect(() => {
-    loadRazorpayScript();
-  }, []);
-
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -64,72 +53,42 @@ const Loan = () => {
     fetchData();
   }, []);
 
-  const handleProceed = async (inrAmount) => {
-    try {
-      const response = await axios.post(`${URL}/payment/addBooking`, {
-        rentPrice: inrAmount,
-      });
-      initPayment(response.data);
-    } catch (error) {
-      console.log(error);
-    }
-  };
+  
 
-  const initPayment = (data) => {
-    const options = {
-      key: "rzp_test_S7O9aeETo3NXrl",
-      amount: data.amount,
-      currency: data.currency,
-      order_id: data.orderDetails.razorpayOrderId,
-      handler: async (response) => {
-        try {
-          const verifyUrl = `${URL}/payment/verify`;
-          const verifyData = {
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-          };
-          try {
-            const res = await axios.post(verifyUrl, verifyData);
-            if (res.status === 200) {
-              const res = await axios.post(`${URL}/user/payloan`, {
-                amount: loan
-              }, {
-                headers: {
-                  Authorization: `Bearer ${localStorage.getItem('token')}`
-                }
-              });
-              if (res.status === 200) {
-                toast.success('Transaction Successful');
-                setTimeout(() => {
-                  window.location.reload();
-                }, 1300);
-              }
-            }
-          } catch (err) {
-            toast.error(err.response.data.message);
-          }
-        } catch (err) {
-          console.log(err);
-        }
-      },
-      theme: {
-        color: "#3399cc",
-      },
-    };
-    const rzp1 = new window.Razorpay(options);
-    rzp1.open();
-  };
+ 
 
-  const handleAddMoney = async (e) => {
-    e.preventDefault();
-    if (loan > user.loan) {
-      toast.error('You cannot pay more than your loan');
-    } else {
-      const inrAmount = parseFloat(loan) * 83.36;
-      await handleProceed(inrAmount);
+ const handleAddMoney = async (e) => {
+  e.preventDefault();
+  if (!loan || loan <= 0) {
+    toast.error('Please enter a valid amount');
+    return;
+  }
+
+  if (loan > user.loan) {
+    toast.error('You cannot pay more than your loan');
+    return;
+  }
+
+  try {
+    const res = await axios.post(`${URL}/user/payloan`, {
+      amount: loan
+    }, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+
+    if (res.status === 200) {
+      toast.success('Loan Paid Successfully');
+      // Update frontend user state
+      setUser(prev => ({ ...prev, loan: prev.loan - loan }));
+      setLoan('');
     }
-  };
+  } catch (err) {
+    toast.error(err?.response?.data?.message || 'Something went wrong');
+  }
+};
+
 
   return (<><Header/>
     <div className="loan-container mt-5 ml-40 grid grid-cols-1 md:grid-cols-2 gap-8">
